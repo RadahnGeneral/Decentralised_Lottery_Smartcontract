@@ -21,7 +21,7 @@ export default function ManualHeader() {
     enableWeb3();
   }, [isWeb3Enabled]);
 
-  React.useEffect(() => {
+  useEffect(() => {
     Moralis.onAccountChanged((account) => {
       console.log(`Account changed to ${account}`);
       if (account === null) {
