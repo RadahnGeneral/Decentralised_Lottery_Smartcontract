@@ -12,6 +12,8 @@ export default function LotteryEntrance() {
     chainId in contractAddresses ? contractAddresses[chainId][0] : null;
 
   const [entranceFee, setEntranceFee] = useState("0");
+  const [numPlayer, setNumPlayer] = useState("0");
+  const [recentWinner, setRecentWinner] = useState("0");
 
   const dispatch = useNotification();
 
@@ -22,7 +24,25 @@ export default function LotteryEntrance() {
     params: {},
   });
 
-  const { runContractFunction: enterLottery } = useWeb3Contract({
+  const { runContractFunction: getNumberofPlayers } = useWeb3Contract({
+    abi: abi,
+    contractAddress: lotteryAddress, //have to specify id
+    functionName: "getNumberofPlayers",
+    params: {},
+  });
+
+  const { runContractFunction: getRecentWinner } = useWeb3Contract({
+    abi: abi,
+    contractAddress: lotteryAddress, //have to specify id
+    functionName: "getRecentWinner",
+    params: {},
+  });
+
+  const {
+    runContractFunction: enterLottery,
+    isLoading,
+    isFetching,
+  } = useWeb3Contract({
     abi: abi,
     contractAddress: lotteryAddress, //have to specify id
     functionName: "enterLottery",
@@ -30,19 +50,29 @@ export default function LotteryEntrance() {
     msgValue: entranceFee,
   });
 
+  async function updateUI() {
+    const entranceFeeFromCall = (await getEntranceFee()).toString();
+    const numPlayersFromCall = (await getNumberofPlayers()).toString();
+    const recentWinnerFromCall = (await getRecentWinner()).toString();
+    setEntranceFee(entranceFeeFromCall);
+    setNumPlayer(numPlayersFromCall);
+    setRecentWinner(recentWinnerFromCall);
+  }
+
   useEffect(() => {
     if (isWeb3Enabled) {
-      async function updateUI() {
-        const entranceFeeFromCall = (await getEntranceFee()).toString();
-        setEntranceFee(entranceFeeFromCall);
-      }
       updateUI();
     }
-  }, [isWeb3Enabled]);
+  }, [isWeb3Enabled, numPlayer, recentWinner]);
 
   async function handleSuccess(tx) {
-    await tx.wait(1);
-    handleNewNotification(tx);
+    try {
+      await tx.wait(1);
+      handleNewNotification(tx);
+      updateUI();
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   const handleNewNotification = () => {
@@ -66,13 +96,25 @@ export default function LotteryEntrance() {
                 onError: (error) => console.log(error),
               })
             }
+            disabled={isLoading || isFetching}
           >
-            Enter Lottery to win ETH!
+            {" "}
+            Enter lottery
+            {/* {isLoading || isFetching ? (
+              <div className="animate-spin spinner-border h-8 w-8 border-b-2 rounded-full"></div>
+            ) : (
+              <div>Enter Lottery to win ETH</div>
+            )} */}
           </button>
-          Entrance fee is {(ethers.utils.formatUnits(entranceFee), "ether")} ETH
+          <br />
+          Entrance fee is {ethers.utils.formatUnits(entranceFee, "ether")} ETH
+          <br />
+          Current number of players is: {numPlayer}
+          <br />
+          Previous winner of the lottery is: {recentWinner}
         </div>
       ) : (
-        <div> No Lottery Address detected </div>
+        <div>Please connect to a supported chain </div>
       )}
     </div>
   );
